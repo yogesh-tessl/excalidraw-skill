@@ -1,6 +1,6 @@
 ---
 name: excalidraw
-description: Generate hand-drawn Excalidraw-style diagrams from text prompts. Triggers on requests for diagrams, flowcharts, architecture sketches, system designs, hand-drawn visuals, or when the user says /excalidraw.
+description: "Generate hand-drawn Excalidraw-style flowcharts, architecture diagrams, sequence flows, entity-relationship diagrams, and decision trees as SVG + PNG from text prompts. Use when the user requests diagrams, flowcharts, architecture sketches, system designs, hand-drawn visuals, or says /excalidraw."
 user_invocable: true
 ---
 
@@ -48,14 +48,15 @@ Create a JSON object following the element format. Key rules:
 - Arrow `from`/`to` reference shape IDs
 
 **Text and labels (CRITICAL for clean output):**
-- Use the `subtitle` property on title `text` elements for descriptive text below titles. NEVER create separate overlapping text elements.
-- Use the `annotation` property on shapes for technical details (endpoint, protocol, size). NEVER place separate `text` elements near shapes for this purpose.
-- Use `sectionLabel` property on zone rectangles. NEVER place separate `text` elements over zone boundaries.
+- Use the `subtitle` property on title `text` elements for descriptive text below titles — never create separate overlapping text elements at similar Y positions.
+- Use the `annotation` property on shapes for technical details (endpoint, protocol, size) — never place separate `text` elements near shapes for descriptions.
+- Use `sectionLabel` property on zone rectangles — never use a separate `text` element for zone/section names.
 - Keep arrow labels to 1-3 words. The renderer auto-positions them to avoid collisions.
+- If the diagram has notes or key findings at the bottom, use a single `text` element with `subtitle` — never stack multiple text elements.
 
 **Sizing shapes for content:**
 - Shapes without annotations: min height 60-80px
-- Shapes with annotations: min height 90-120px (annotations need room below the label)
+- Shapes with annotations: min height 90-120px (annotations need room below the label). Never use fontSize below 13 for any text.
 - Increase width for long labels (the renderer wraps to shape width minus 28px padding)
 
 **Spacing and layout:**
@@ -69,7 +70,11 @@ Create a JSON object following the element format. Key rules:
 - Use pastel fills from the color palette for readability
 - Zone rectangles use very faint fills (e.g., `#e7f5ff`) with `sectionLabel`
 
-### Step 4: Render
+### Step 4: Validate JSON
+
+Before rendering, verify the generated JSON is valid: parse it with `JSON.parse()` or `node -e` and confirm every arrow `from`/`to` references an existing shape `id`.
+
+### Step 5: Render
 
 1. Read the `OUTPUT_DIR` from the Configuration section above. Create the directory if it doesn't exist.
 
@@ -85,11 +90,13 @@ Create a JSON object following the element format. Key rules:
    node <SKILL_DIR>/scripts/render.mjs /tmp/excalidraw-diagram.json "<OUTPUT_DIR>"
    ```
 
-4. Clean up the temp file.
+4. If the renderer exits non-zero, read the error output, fix the JSON (common issues: missing IDs, invalid color hex, shapes outside canvas bounds), and re-run.
 
-### Step 5: Report output
+5. Clean up the temp file.
 
-Tell the user the file paths for both SVG and PNG. Open the PNG for visual inspection.
+### Step 6: Report output
+
+Tell the user the file paths for both SVG and PNG. Open the PNG for visual inspection. If the diagram looks wrong (overlapping elements, missing labels), return to Step 3 and adjust.
 
 ## Usage Examples
 
@@ -97,15 +104,6 @@ Tell the user the file paths for both SVG and PNG. Open the PNG for visual inspe
 - `/excalidraw microservices architecture with 4 services`
 - `/excalidraw decision flowchart for code review process`
 - `draw me a hand-drawn diagram of the deployment pipeline`
-
-## Common Mistakes to Avoid
-
-1. **Overlapping text**: Never place two `text` elements at similar Y positions. Use `subtitle` property instead.
-2. **Floating annotations**: Never use separate `text` elements for shape descriptions. Use the `annotation` property on the shape itself.
-3. **Zone labels as text**: Never use a `text` element for zone/section names. Use `sectionLabel` on the zone rectangle.
-4. **Tiny annotations**: Never use fontSize below 13 for any text. The renderer enforces a minimum of 13px.
-5. **Cramped shapes**: When adding `annotation` to a shape, increase its height to at least 90px.
-6. **Text pile-ups**: If the diagram has notes or key findings at the bottom, keep them to a single `text` element with `subtitle`, not multiple stacked elements.
 
 ## Requirements
 
